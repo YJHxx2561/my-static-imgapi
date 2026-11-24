@@ -20,30 +20,32 @@
 
 | 类别 | 目录 | 编号范围 | 数量 | 格式 | 体积 |
 | --- | --- | --- | --- | --- | --- |
-| 横屏 | `images/landscape/` | `1.webp` ~ `1070.webp` | 1070 张 | WebP (q95 静态) | 约 0.80 GB |
-| 竖屏 | `images/portrait/` | `1.webp` ~ `1926.webp` | 1926 张 | WebP (q95 静态) | 约 1.03 GB |
+| 横屏 | `images/landscape/` | `1.webp` ~ `1475.webp` | 1475 张 | WebP (静态) | 约 1.11 GB |
+| 竖屏 | `images/portrait/` | `1.webp` ~ `2591.webp` | 2591 张 | WebP (静态) | 约 1.52 GB |
 | ACG 动图 | `images/acg/` | `1.webp` ~ `50.webp` | 50 张 | animated WebP (1280px/20fps/q88) | 约 0.37 GB |
 | ACG 视频 | `images/video/` | `1.mp4` ~ `50.mp4` | 50 个 | MP4 | 约 0.56 GB |
-| **合计** | — | — | **3096 个** | — | **约 2.75 GB** |
+| **合计** | — | — | **4166 个** | — | **约 3.55 GB** |
 
-- 四类各自从 1 开始编号、连续递增，互不影响。静态图用有损 WebP（q95）；动图由视频转换而来（前 5 秒 / 1280px / 20fps / q88 / method 6，多帧动画）；动图与视频**同编号即同一源视频**。
+- 四类各自从 1 开始编号、连续递增，互不影响。静态图用有损 WebP（前 1926 竖 / 1070 横为 q95，新增初音未来图为 q85）；动图由视频转换而来（前 5 秒 / 1280px / 20fps / q88 / method 6，多帧动画）；动图与视频**同编号即同一源视频**。
 - 单个动图 2.5~14.2MB、单个视频 2.7~21.1MB，**均低于 Cloudflare 25MB 单文件上限**；超大的源视频会缩放到 1280px 重编码后再入库。
-- 横屏前 404 张、竖屏前 919 张为原始图；横屏 405~1070（666 张）、竖屏 920~1926（1007 张）为后追加图片（含 1 张从竖图目录纠正过来的横屏图）。
-- 原始视频保留在 `14_ACG动图_acg/`，已加入 `.gitignore` 不入库；部署用文件为 `images/video/`。
-- `random` 模式返回 3046 个图片/动图（**不含视频**）；视频单独通过 `/api/video` 返回。
+- 图片来源分批续接：横屏 1~404 原始图、405~1070 追加图（含 1 张方向纠正）、1071~1475 初音未来横图（405 张）；竖屏 1~919 原始图、920~1926 追加图、1927~2591 初音未来竖图（665 张）。
+- 原始压缩包（`初音未来横图.zip`、`初音未来竖图.zip` 等）与源素材目录已加入 `.gitignore` 不入库；部署用文件为 `images/` 成品。
+- `random` 模式返回 4116 个图片/动图（**不含视频**）；视频单独通过 `/api/video` 返回。
 
 ## 项目结构
 
 ```
 .
 ├── images/                    # 所有资源统一放在此目录
-│   ├── landscape/             # 横屏：1.webp ~ 1070.webp（1070 张）
-│   ├── portrait/              # 竖屏：1.webp ~ 1926.webp（1926 张）
+│   ├── landscape/             # 横屏：1.webp ~ 1475.webp（1475 张）
+│   ├── portrait/              # 竖屏：1.webp ~ 2591.webp（2591 张）
 │   ├── acg/                   # ACG 动图：1.webp ~ 50.webp（50 张，animated WebP）
 │   └── video/                 # ACG 视频：1.mp4 ~ 50.mp4（50 个，与动图同编号同源）
-├── 01_PC横图_pc/              # 后添加的横图源文件（已入 .gitignore，仅本地保留）
-├── 02_移动竖图_mp/            # 后添加的竖图源文件（已入 .gitignore）
-├── 14_ACG动图_acg/            # 50 个原始 MP4 视频（已入 .gitignore，仅本地保留）
+├── 初音未来横图.zip           # 新增横图源压缩包（已入 .gitignore，仅本地保留）
+├── 初音未来竖图.zip           # 新增竖图源压缩包（已入 .gitignore）
+├── 01_PC横图_pc/              # 后添加的横图源目录（已入 .gitignore）
+├── 02_移动竖图_mp/            # 后添加的竖图源目录（已入 .gitignore）
+├── 14_ACG动图_acg/            # 50 个原始 MP4 视频（已入 .gitignore）
 ├── functions/
 │   ├── api/
 │   │   ├── index.js           # /api 接口说明（含动图/视频使用说明）
@@ -55,6 +57,7 @@
 │   ├── convert_to_webp.py         # 原始图片转无损 WebP + 按序重命名
 │   ├── compress_images.py         # 图片压缩为有损 WebP(q95)
 │   ├── import_new_images.py       # 新图片续接编号导入
+│   ├── import_miku_images.py      # 初音未来压缩包图片转 WebP 导入（q85）
 │   ├── convert_videos_to_webp.py  # MP4 转高质量 animated WebP（<25MB 自动降档）
 │   └── import_videos.py           # MP4 视频导入 images/video/（<25MB 自动压缩）
 ├── _routes.json               # 路由白名单：仅 /api 走函数，静态资源跳过
@@ -67,7 +70,7 @@
 
 | 路径 | 说明 |
 | --- | --- |
-| `/api/random` | 随机返回一个资源（横屏 + 竖屏 + 动图，共 3046 个；不含视频） |
+| `/api/random` | 随机返回一个资源（横屏 + 竖屏 + 动图，共 4116 个；不含视频） |
 | `/api/landscape` | 随机返回一张横屏图片 |
 | `/api/portrait` | 随机返回一张竖屏图片 |
 | `/api/acg` | 随机返回一张 ACG 动图（animated WebP，浏览器直接播放） |
@@ -92,7 +95,7 @@ curl -i https://your-project.pages.dev/api/portrait
 
 ```
 /images/landscape/1.webp      # 第 1 张横屏图
-/images/portrait/1926.webp    # 第 1926 张竖屏图
+/images/portrait/2591.webp    # 第 2591 张竖屏图
 /images/acg/1.webp            # 第 1 张 ACG 动图（浏览器会播放动画）
 /images/video/1.mp4           # 第 1 个 ACG 视频
 ```
@@ -127,7 +130,7 @@ ACG 动图（animated WebP）可直接用 `<img>` 播放；视频（MP4）用 `<
 {
   "mode": "random",
   "count": 1,
-  "total": 3046,
+  "total": 4116,
   "images": [
     { "file": "images/landscape/42.webp", "url": "https://…/images/landscape/42.webp" }
   ]
@@ -154,7 +157,7 @@ Cloudflare Pages 默认会让所有请求都调用 Functions。项目根目录�
 - `exclude`：显式排除 `/images/*` 下的所有图片，直接由 CDN 返回，不产生函数请求。
 - `exclude` 优先级高于 `include`；规则上限合计 100 条。
 
-这样 3096 个资源（含动图与视频）无论访问量多大都不消耗 Functions 额度，只有调用随机接口时才计费。若后续新增其他静态目录（如 `favicon.ico` 等），同样可以把路径加入 `exclude`。
+这样 4166 个资源（含动图与视频）无论访问量多大都不消耗 Functions 额度，只有调用随机接口时才计费。若后续新增其他静态目录（如 `favicon.ico` 等），同样可以把路径加入 `exclude`。
 
 ## 本地运行
 
@@ -174,7 +177,7 @@ wrangler pages dev . --local
 1. **直接上传**：在 Cloudflare 控制台 → Workers & Pages → 创建 Pages 项目 → 上传整个项目目录。
 2. **连接 Git 仓库**：连接后同样无需构建命令，Cloudflare 会自动识别 `functions/` 目录并启用函数。
 
-> 提示：`images/` 总量约 2.75GB（静态图 q95 + 高质量动图 + 视频，单文件均 < 25MB）。原始素材目录（`01_PC横图_pc/`、`02_移动竖图_mp/`、`14_ACG动图_acg/`）已加入 `.gitignore`，不入库、不部署；成品都在 `images/`。`_routes.json` 需保存在项目根目录才生效。
+> 提示：`images/` 总量约 3.55GB（静态图 + 高质量动图 + 视频，单文件均 < 25MB）。原始压缩包与素材目录（初音未来 zip、`01_PC横图_pc/`、`02_移动竖图_mp/`、`14_ACG动图_acg/`）已加入 `.gitignore`，不入库、不部署；成品都在 `images/`。`_routes.json` 需保存在项目根目录才生效。
 
 ## 增删图片后更新清单
 
@@ -188,7 +191,7 @@ node scripts/generate-manifest.mjs
 
 ```
 已生成 functions\_lib\manifest.js
-横屏 1070 张，竖屏 1926 张，动图 50 张，视频 50 个，随机池共 3046 个
+横屏 1475 张，竖屏 2591 张，动图 50 张，视频 50 个，随机池共 4116 个
 ```
 
 如使用 Git 部署，提交更新后的清单即可生效。资源统一放在 `images/` 下，子目录名固定为 `landscape`（横屏）、`portrait`（竖屏）、`acg`（动图）、`video`（视频），修改目录名需同步修改脚本中的 `relDir` 常量。
@@ -226,6 +229,15 @@ python scripts/import_new_images.py --apply   # 实际导入
 - 把 `01_PC横图_pc/`（横图）与 `02_移动竖图_mp/`（竖图）导入 `images/`，接着已有最大编号递增。
 - 按图片实际方向分类（竖图目录里混入的横屏图会纠正到 landscape）；已是 WebP 的直接复制避免二次编码，非 WebP 的转 q95。源文件目录保留。
 
+**阶段三-B：初音未来压缩包导入（续接编号）**
+
+```bash
+python scripts/import_miku_images.py --apply --quality 85 --workers 12
+```
+
+- 从 `初音未来横图.zip`（405 张）与 `初音未来竖图.zip`（665 张）直接读取，转有损 WebP(q85) 压缩，按实际方向续接编号导入。
+- 原始约 5.55GB 压缩为新增约 0.8GB；压缩包已加入 `.gitignore` 不入库。
+
 **阶段四：MP4 视频转高质量 animated WebP 动图**
 
 ```bash
@@ -248,7 +260,7 @@ python scripts/import_videos.py
 
 - 阶段四、五均依赖 `imageio-ffmpeg` 提供的 ffmpeg。
 
-> 当前共 3096 个资源（1070 横屏 + 1926 竖屏 + 50 动图 + 50 视频），`images/` 约 2.75GB；`random` 为 3046 个图片/动图，`/api/acg` 仅动图，`/api/video` 仅视频。
+> 当前共 4166 个资源（1475 横屏 + 2591 竖屏 + 50 动图 + 50 视频），`images/` 约 3.55GB；`random` 为 4116 个图片/动图，`/api/acg` 仅动图，`/api/video` 仅视频。
 
 ## 常见问题
 

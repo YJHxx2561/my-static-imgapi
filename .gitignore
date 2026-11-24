@@ -4,10 +4,14 @@
 # 原始图片压缩包（体积约 2GB，不入仓库）
 合集.7z
 
-# 源素材目录（图片/动图已导入 images/ 成品，源文件约 1.4GB 不入仓库）
+# 源素材目录与原始压缩包（图片已导入 images/ 成品，源文件体积大不入仓库）
 01_PC横图_pc/
 02_移动竖图_mp/
 14_ACG动图_acg/
+初音未来横图.zip
+初音未来竖图.zip
+horizontal/
+vertical/
 
 # Node 依赖与系统文件
 node_modules/
