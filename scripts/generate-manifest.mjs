@@ -25,7 +25,8 @@ function listImages(dirName) {
   return fs.readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && IMAGE_EXTS.has(path.extname(entry.name).toLowerCase()))
     .map((entry) => `${relDir}/${entry.name}`)
-    .sort((a, b) => a.localeCompare(b));
+    // 数字自然排序：1.webp、2.webp … 11.webp（而非字符串序 1、10、100）
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
 const landscape = listImages('landscape');
