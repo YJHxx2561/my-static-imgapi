@@ -2,13 +2,14 @@
 // 路由：/api/random  /api/landscape  /api/portrait
 // 详见项目根目录 README.md
 
-import { LANDSCAPE, PORTRAIT, ACG, ALL, COUNT } from '../_lib/manifest.js';
+import { LANDSCAPE, PORTRAIT, ACG, VIDEO, ALL, COUNT } from '../_lib/manifest.js';
 
 const POOLS = {
-  random: ALL,          // 横屏 + 竖屏 + 动图
+  random: ALL,          // 横屏 + 竖屏 + 动图（不含视频）
   landscape: LANDSCAPE,
   portrait: PORTRAIT,
-  acg: ACG,             // 仅动图
+  acg: ACG,             // 仅动图（animated WebP）
+  video: VIDEO,         // 仅视频（MP4）
   // 常用别名，方便记忆与兼容
   heng: LANDSCAPE,
   horizontal: LANDSCAPE,
@@ -16,6 +17,8 @@ const POOLS = {
   vertical: PORTRAIT,
   dongtu: ACG,
   gif: ACG,
+  shipin: VIDEO,
+  mp4: VIDEO,
   all: ALL,
 };
 
@@ -61,7 +64,7 @@ export async function onRequestGet(context) {
     return json({
       error: '未知模式',
       message: `模式 "${mode}" 不存在`,
-      availableModes: ['random', 'landscape', 'portrait', 'acg'],
+      availableModes: ['random', 'landscape', 'portrait', 'acg', 'video'],
       example: '/api/random',
     }, 404);
   }

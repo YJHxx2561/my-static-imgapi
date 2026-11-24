@@ -1,5 +1,5 @@
 /**
- * 扫描 images/ 下的 landscape/、portrait/、acg/ 目录，生成 Functions 使用的图片清单。
+ * 扫描 images/ 下的 landscape/、portrait/、acg/、video/ 目录，生成 Functions 使用的资源清单。
  *
  * 用法：
  *   node scripts/generate-manifest.mjs
@@ -16,6 +16,7 @@ const root = path.resolve(__dirname, '..');
 
 const IMAGE_EXTS = new Set([
   '.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.bmp', '.svg',
+  '.mp4', '.webm',
 ]);
 
 function listImages(dirName) {
@@ -32,7 +33,8 @@ function listImages(dirName) {
 const landscape = listImages('landscape');
 const portrait = listImages('portrait');
 const acg = listImages('acg');
-// random 池包含静态图（横+竖）与动图
+const video = listImages('video');
+// random 池包含静态图（横+竖）与动图（视频单独通过 /api/video 提供，不进 random）
 const all = [...landscape, ...portrait, ...acg];
 
 if (all.length === 0) {
@@ -49,12 +51,15 @@ const content = [
   '\n',
   `export const ACG = ${JSON.stringify(acg)};\n`,
   '\n',
+  `export const VIDEO = ${JSON.stringify(video)};\n`,
+  '\n',
   `export const ALL = ${JSON.stringify(all)};\n`,
   '\n',
   `export const COUNT = ${JSON.stringify({
     landscape: landscape.length,
     portrait: portrait.length,
     acg: acg.length,
+    video: video.length,
     total: all.length,
   })};\n`,
 ].join('');
@@ -64,4 +69,4 @@ fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, content, 'utf8');
 
 console.log(`已生成 ${path.relative(root, outFile)}`);
-console.log(`横屏 ${landscape.length} 张，竖屏 ${portrait.length} 张，动图 ${acg.length} 张，共 ${all.length} 张`);
+console.log(`横屏 ${landscape.length} 张，竖屏 ${portrait.length} 张，动图 ${acg.length} 张，视频 ${video.length} 个，随机池共 ${all.length} 个`);

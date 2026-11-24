@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-把 14_ACG动图_acg 下的 MP4 视频转换为 animated WebP 动图，
+把 14_ACG动图_acg 下的 MP4 视频转换为高质量 animated WebP 动图，
 存入 images/acg/1.webp ~ 50.webp，按文件名排序编号。原 MP4 视频保留。
 
-参数（保证单文件远低于 Cloudflare 25MB 限制）：
-  - 截取前 5 秒
-  - 宽度缩放至 640px（保持比例）
-  - 帧率 10 fps
-  - WebP 有损质量 75，method 4，循环播放
+质量策略（画质优先，单个文件严格 < 25MB —— Cloudflare Pages 单文件上限）：
+  基准参数：1280px 宽 / 20fps / quality 88 / method 6
+  若某视频转换后超过 25MB，自动逐级降档重转，直到达标：
+    (1280,20,88) -> (1280,16,85) -> (960,16,85) -> (960,12,82) -> (800,12,80)
+  截取前 5 秒，循环播放。
 
 依赖：imageio-ffmpeg（提供 ffmpeg）、Pillow（校验）
 
@@ -28,10 +28,33 @@ SRC_DIR = os.path.join(ROOT, '14_ACG动图_acg')
 DST_DIR = os.path.join(ROOT, 'images', 'acg')
 FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
 
-DURATION = 5       # 截取秒数
-WIDTH = 640        # 缩放宽度
-FPS = 10           # 帧率
-QUALITY = 75       # WebP 质量
+DURATION = 5
+MAX_BYTES = 25 * 1024 * 1024  # 25MB 硬上限
+# 从高到低的画质档位，逐个尝试直到体积达标
+TIERS = [
+    (1280, 20, 88),
+    (1280, 16, 85),
+    (960, 16, 85),
+    (960, 12, 82),
+    (800, 12, 80),
+]
+
+
+def encode(src, dst, width, fps, quality):
+    vf = f'scale={width}:-2,fps={fps}'
+    cmd = [
+        FFMPEG, '-y', '-i', src,
+        '-t', str(DURATION),
+        '-vf', vf,
+        '-loop', '0',
+        '-c:v', 'libwebp_anim',
+        '-quality', str(quality),
+        '-method', '6',
+        dst,
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr[-400:])
 
 
 def main():
@@ -44,41 +67,30 @@ def main():
         sys.exit(1)
 
     os.makedirs(DST_DIR, exist_ok=True)
-    print(f'共 {len(videos)} 个视频，转换为 animated WebP（前{DURATION}s / {WIDTH}px / {FPS}fps / q{QUALITY}）')
+    print(f'共 {len(videos)} 个视频，转换为高质量 animated WebP（前{DURATION}s，单文件 < 25MB）')
 
-    total_before = total_after = 0
+    total_bytes = 0
     for idx, name in enumerate(videos, 1):
         src = os.path.join(SRC_DIR, name)
         dst = os.path.join(DST_DIR, f'{idx}.webp')
-        total_before += os.path.getsize(src)
-        if os.path.exists(dst) and os.path.getsize(dst) > 0:
-            with Image.open(dst) as check:
-                if getattr(check, 'n_frames', 1) > 1:
-                    total_after += os.path.getsize(dst)
-                    print(f'[{idx}/{len(videos)}] {name} - 已存在，跳过')
-                    continue
-        vf = f'scale={WIDTH}:-2,fps={FPS}'
-        cmd = [
-            FFMPEG, '-y', '-i', src,
-            '-t', str(DURATION),
-            '-vf', vf,
-            '-loop', '0',
-            '-c:v', 'libwebp_anim',
-            '-quality', str(QUALITY),
-            '-method', '4',
-            dst,
-        ]
-        r = subprocess.run(cmd, capture_output=True, text=True)
-        if r.returncode != 0:
-            print(f'[{idx}/{len(videos)}] {name} - 失败: {r.stderr[-300:]}')
+        used_tier = None
+        for width, fps, quality in TIERS:
+            encode(src, dst, width, fps, quality)
+            size = os.path.getsize(dst)
+            if size < MAX_BYTES:
+                used_tier = (width, fps, quality, size)
+                break
+        if used_tier is None:
+            print(f'[{idx}/{len(videos)}] {name} - 即使最低档仍超 25MB，跳过')
             sys.exit(1)
+        width, fps, quality, size = used_tier
         with Image.open(dst) as im:
             frames = getattr(im, 'n_frames', 1)
-        size_mb = os.path.getsize(dst) / 1024 / 1024
-        total_after += os.path.getsize(dst)
-        print(f'[{idx}/{len(videos)}] {name} -> {idx}.webp  {size_mb:.2f}MB / {frames}帧')
+        total_bytes += size
+        print(f'[{idx}/{len(videos)}] {name} -> {idx}.webp  {width}px/{fps}fps/q{quality}  '
+              f'{size/1024/1024:.2f}MB / {frames}帧')
 
-    print(f'\n完成：原视频 {total_before/1024**3:.2f}GB -> 动图 {total_after/1024**3:.2f}GB')
+    print(f'\n完成：动图总计 {total_bytes/1024**3:.2f}GB，单文件均 < 25MB')
     print('原 MP4 视频已保留在 14_ACG动图_acg/。请运行 node scripts/generate-manifest.mjs 更新清单。')
 
 
