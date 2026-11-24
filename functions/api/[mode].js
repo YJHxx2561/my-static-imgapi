@@ -2,17 +2,20 @@
 // 路由：/api/random  /api/landscape  /api/portrait
 // 详见项目根目录 README.md
 
-import { LANDSCAPE, PORTRAIT, ALL, COUNT } from '../_lib/manifest.js';
+import { LANDSCAPE, PORTRAIT, ACG, ALL, COUNT } from '../_lib/manifest.js';
 
 const POOLS = {
-  random: ALL,
+  random: ALL,          // 横屏 + 竖屏 + 动图
   landscape: LANDSCAPE,
   portrait: PORTRAIT,
+  acg: ACG,             // 仅动图
   // 常用别名，方便记忆与兼容
   heng: LANDSCAPE,
   horizontal: LANDSCAPE,
   shu: PORTRAIT,
   vertical: PORTRAIT,
+  dongtu: ACG,
+  gif: ACG,
   all: ALL,
 };
 
@@ -58,7 +61,7 @@ export async function onRequestGet(context) {
     return json({
       error: '未知模式',
       message: `模式 "${mode}" 不存在`,
-      availableModes: ['random', 'landscape', 'portrait'],
+      availableModes: ['random', 'landscape', 'portrait', 'acg'],
       example: '/api/random',
     }, 404);
   }

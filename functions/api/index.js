@@ -17,7 +17,7 @@ export async function onRequestGet(context) {
     endpoints: [
       {
         path: '/api/random',
-        description: '随机返回一张图片（横屏 + 竖屏）',
+        description: '随机返回一张图片（横屏 + 竖屏 + 动图）',
         example: `${origin}/api/random`,
       },
       {
@@ -30,6 +30,11 @@ export async function onRequestGet(context) {
         description: '随机返回一张竖屏图片',
         example: `${origin}/api/portrait`,
       },
+      {
+        path: '/api/acg',
+        description: '随机返回一张 ACG 动图（animated WebP）',
+        example: `${origin}/api/acg`,
+      },
     ],
     queryParams: {
       'type=json': '返回 JSON 图片信息而非重定向',
@@ -38,6 +43,7 @@ export async function onRequestGet(context) {
     aliases: {
       landscape: ['heng', 'horizontal'],
       portrait: ['shu', 'vertical'],
+      acg: ['dongtu', 'gif'],
       random: ['all'],
     },
   };

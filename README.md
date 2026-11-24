@@ -6,7 +6,7 @@
 
 ## 功能
 
-- 三种模式：随机（横竖混合）、横屏、竖屏
+- 四种模式：随机（横屏 + 竖屏 + 动图混合）、横屏、竖屏、ACG 动图
 - 默认 302 跳转到静态图片，走 CDN 缓存，速度快、不消耗函数流量
 - 通过 `_routes.json` 限制只有 `/api/*` 走函数，静态图片等资源直接由 CDN 返回，节约 Functions 请求额度
 - 支持 `type=json` 返回图片信息，便于前端按需取用
@@ -16,36 +16,44 @@
 
 ## 图片资源
 
-所有图片统一为 **WebP** 格式（有损 `quality=95`，画质肉眼几乎无损），按横竖两类分别独立编号，从 `1.webp` 开始递增：
+所有资源统一为 **WebP** 格式，按三类分别独立编号，从 `1.webp` 开始递增：
 
-| 类别 | 目录 | 编号范围 | 数量 | 格式 | 压缩后体积 |
+| 类别 | 目录 | 编号范围 | 数量 | 格式 | 体积 |
 | --- | --- | --- | --- | --- | --- |
-| 横屏 | `images/landscape/` | `1.webp` ~ `404.webp` | 404 张 | WebP (q95) | 约 0.45 GB |
-| 竖屏 | `images/portrait/` | `1.webp` ~ `919.webp` | 919 张 | WebP (q95) | 约 0.60 GB |
-| **合计** | — | — | **1323 张** | — | **约 1.05 GB** |
+| 横屏 | `images/landscape/` | `1.webp` ~ `1070.webp` | 1070 张 | WebP (q95 静态) | 约 0.80 GB |
+| 竖屏 | `images/portrait/` | `1.webp` ~ `1926.webp` | 1926 张 | WebP (q95 静态) | 约 1.03 GB |
+| ACG 动图 | `images/acg/` | `1.webp` ~ `50.webp` | 50 张 | animated WebP | 约 46 MB |
+| **合计** | — | — | **3046 张** | — | **约 1.87 GB** |
 
-- 两类图片各自从 1 开始编号、连续递增，互不影响。
-- 采用有损 WebP（`quality=95`）：整库约 **1.05 GB**，仅为原始图片总量（约 1.97 GB）的 **53%**，满足「总大小不超过原图」的要求。
-- 转换链路：原始 JPG/PNG → 无损 WebP → 有损 WebP(q95)。因无损 WebP 是像素级无损的，最终画质等同于从原图直接编码 q95，没有中间损失。
-- 图片已按数字自然顺序整理（`1.webp`、`2.webp` … `404.webp`），清单中 likewise 按此顺序排列。
+- 三类各自从 1 开始编号、连续递增，互不影响。静态图采用有损 WebP（`quality=95`），动图为 animated WebP（640px / 10fps / q75，截取前 5 秒）。
+- 横屏前 404 张、竖屏前 919 张为原始图；横屏 405~1070（666 张）、竖屏 920~1926（1007 张）为后追加图片（含 1 张从竖图目录纠正过来的横屏图）。
+- 原视频（50 个 MP4）保留在 `14_ACG动图_acg/`，动图由视频转换而来。
+- 图片按数字自然顺序整理（`1.webp`、`2.webp` … `1070.webp`），清单 likewise 按此顺序排列。
+- `random` 模式返回全部 3046 个资源（含动图）；`/api/acg` 只返回 50 张动图。
 
 ## 项目结构
 
 ```
 .
 ├── images/                    # 所有图片资源统一放在此目录
-│   ├── landscape/             # 横屏图片：1.webp ~ 404.webp（404 张）
-│   └── portrait/              # 竖屏图片：1.webp ~ 919.webp（919 张）
+│   ├── landscape/             # 横屏：1.webp ~ 1070.webp（1070 张）
+│   ├── portrait/              # 竖屏：1.webp ~ 1926.webp（1926 张）
+│   └── acg/                   # ACG 动图：1.webp ~ 50.webp（50 张，animated WebP）
+├── 01_PC横图_pc/              # 后添加的横图源文件（已导入 images/）
+├── 02_移动竖图_mp/            # 后添加的竖图源文件（已导入 images/）
+├── 14_ACG动图_acg/            # 50 个原始 MP4 视频（保留）
 ├── functions/
 │   ├── api/
 │   │   ├── index.js           # /api 接口说明
-│   │   └── [mode].js          # 核心动态路由（random / landscape / portrait）
+│   │   └── [mode].js          # 核心动态路由（random / landscape / portrait / acg）
 │   └── _lib/
 │       └── manifest.js        # 自动生成的图片清单（下划线目录不会被当作路由）
 ├── scripts/
-│   ├── generate-manifest.mjs  # 清单生成脚本
-│   ├── convert_to_webp.py     # 原始图片转无损 WebP + 按序重命名脚本
-│   └── compress_images.py     # 图片压缩为有损 WebP(q95) 脚本
+│   ├── generate-manifest.mjs      # 清单生成脚本
+│   ├── convert_to_webp.py         # 原始图片转无损 WebP + 按序重命名
+│   ├── compress_images.py         # 图片压缩为有损 WebP(q95)
+│   ├── import_new_images.py       # 新图片续接编号导入
+│   └── convert_videos_to_webp.py  # MP4 视频转 animated WebP
 ├── _routes.json               # 路由白名单：仅 /api 走函数，图片等静态资源跳过
 ├── README.md
 ```
@@ -56,9 +64,10 @@
 
 | 路径 | 说明 |
 | --- | --- |
-| `/api/random` | 随机返回一张图片（横屏 + 竖屏） |
+| `/api/random` | 随机返回一张资源（横屏 + 竖屏 + 动图，共 3046 个） |
 | `/api/landscape` | 随机返回一张横屏图片 |
 | `/api/portrait` | 随机返回一张竖屏图片 |
+| `/api/acg` | 随机返回一张 ACG 动图（animated WebP） |
 | `/api` | 查看接口说明与图片数量 |
 
 直接用浏览器或 `<img>` 标签访问即可显示随机图片：
@@ -79,7 +88,8 @@ curl -i https://your-project.pages.dev/api/portrait
 
 ```
 /images/landscape/1.webp      # 第 1 张横屏图
-/images/portrait/919.webp     # 第 919 张竖屏图
+/images/portrait/1926.webp    # 第 1926 张竖屏图
+/images/acg/1.webp            # 第 1 张 ACG 动图（浏览器会播放动画）
 ```
 
 完整 URL 示例：`https://your-project.pages.dev/images/landscape/1.webp`。路径不存在时返回 404。这类请求由 CDN 直接返回，不消耗 Functions 额度。
@@ -97,7 +107,7 @@ curl -i https://your-project.pages.dev/api/portrait
 {
   "mode": "random",
   "count": 1,
-  "total": 1323,
+  "total": 3046,
   "images": [
     { "file": "images/landscape/42.webp", "url": "https://…/images/landscape/42.webp" }
   ]
@@ -106,7 +116,7 @@ curl -i https://your-project.pages.dev/api/portrait
 
 ### 模式别名
 
-`landscape` 可用 `heng`、`horizontal`；`portrait` 可用 `shu`、`vertical`；`random` 可用 `all`。
+`landscape` 可用 `heng`、`horizontal`；`portrait` 可用 `shu`、`vertical`；`acg` 可用 `dongtu`、`gif`；`random` 可用 `all`。
 
 ## 节约 Functions 请求（_routes.json）
 
@@ -124,7 +134,7 @@ Cloudflare Pages 默认会让所有请求都调用 Functions。项目根目录�
 - `exclude`：显式排除 `/images/*` 下的所有图片，直接由 CDN 返回，不产生函数请求。
 - `exclude` 优先级高于 `include`；规则上限合计 100 条。
 
-这样 1323 张图片无论访问量多大都不消耗 Functions 额度，只有调用随机接口时才计费。若后续新增其他静态目录（如 `favicon.ico` 等），同样可以把路径加入 `exclude`。
+这样 3046 个资源（含动图）无论访问量多大都不消耗 Functions 额度，只有调用随机接口时才计费。若后续新增其他静态目录（如 `favicon.ico` 等），同样可以把路径加入 `exclude`。
 
 ## 本地运行
 
@@ -144,7 +154,7 @@ wrangler pages dev . --local
 1. **直接上传**：在 Cloudflare 控制台 → Workers & Pages → 创建 Pages 项目 → 上传整个项目目录。
 2. **连接 Git 仓库**：连接后同样无需构建命令，Cloudflare 会自动识别 `functions/` 目录并启用函数。
 
-> 提示：图片总量约 1.05GB（有损 WebP q95），已控制在原始图片大小（约 1.97GB）以内。`_routes.json` 需保存在项目根目录（即上传/构建输出的根目录）才能生效。如需进一步减小体积，可用 `compress_images.py --quality` 指定更低质量（如 85 约 0.5GB）。
+> 提示：`images/` 总量约 1.87GB（静态图 q95 + 动图），另有原始 MP4 视频约 0.57GB 保留在 `14_ACG动图_acg/`。若不想上传视频源文件，部署前可从上传目录移除该文件夹（动图已生成在 `images/acg/`，不影响 API）。`_routes.json` 需保存在项目根目录才生效。
 
 ## 增删图片后更新清单
 
@@ -154,14 +164,14 @@ Functions 无法直接读取文件系统，图片路径预先写在 `functions/_
 node scripts/generate-manifest.mjs
 ```
 
-脚本会重新扫描两个图片目录并输出最新清单：
+脚本会重新扫描三个目录（`landscape`、`portrait`、`acg`）并输出最新清单：
 
 ```
 已生成 functions\_lib\manifest.js
-横屏 404 张，竖屏 919 张，共 1323 张
+横屏 1070 张，竖屏 1926 张，动图 50 张，共 3046 张
 ```
 
-如使用 Git 部署，提交更新后的清单即可生效。图片统一放在 `images/` 下，子目录名固定为 `landscape`（横屏）和 `portrait`（竖屏），修改目录名需同步修改脚本中的 `relDir` 常量。
+如使用 Git 部署，提交更新后的清单即可生效。图片统一放在 `images/` 下，子目录名固定为 `landscape`（横屏）、`portrait`（竖屏）、`acg`（动图），修改目录名需同步修改脚本中的 `relDir` 常量。
 
 ## 图片处理脚本
 
@@ -183,10 +193,31 @@ python scripts/compress_images.py --quality 95 --workers 12   # 压缩到临时�
 python scripts/compress_images.py --apply                      # 校验后替换
 ```
 
-- 保持 `1.webp ~ N.webp` 文件名不变，`--quality` 可调（95 约 1.05GB，85 约 0.5GB）。
+- 保持 `1.webp ~ N.webp` 文件名不变，`--quality` 可调。
 - 每次替换图片后需重新运行 `node scripts/generate-manifest.mjs` 更新清单。
 
-> 当前 1323 张图片（404 横屏 + 919 竖屏）已完成转换与压缩，最终约 1.05GB，低于原始图片总量（约 1.97GB）。
+**阶段三：导入新图片（续接编号）**
+
+```bash
+python scripts/import_new_images.py           # 预演，打印导入计划
+python scripts/import_new_images.py --apply   # 实际导入
+```
+
+- 把 `01_PC横图_pc/`（横图）与 `02_移动竖图_mp/`（竖图）导入 `images/`，接着已有最大编号递增。
+- 按图片实际方向分类（竖图目录里混入的横屏图会纠正到 landscape）；已是 WebP 的直接复制避免二次编码，非 WebP 的转 q95。源文件目录保留。
+
+**阶段四：MP4 视频转 animated WebP 动图**
+
+```bash
+pip install imageio-ffmpeg Pillow
+python scripts/convert_videos_to_webp.py
+```
+
+- 把 `14_ACG动图_acg/` 的 50 个 MP4 转为 `images/acg/1.webp ~ 50.webp`，原视频保留。
+- 参数：截取前 5 秒、宽度 640px、10fps、q75；单文件 0.34~1.67MB，远低于 Cloudflare 25MB 限制。
+- 依赖 `imageio-ffmpeg` 提供的 ffmpeg。
+
+> 当前共 3046 个资源（1070 横屏 + 1926 竖屏 + 50 动图），`images/` 约 1.87GB；`random` 含全部，`/api/acg` 仅动图。
 
 ## 常见问题
 
