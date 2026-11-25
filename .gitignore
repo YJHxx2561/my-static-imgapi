@@ -20,5 +20,6 @@ Thumbs.db
 
 # 导入进度与 Python 缓存（临时文件，不入仓库）
 .import_progress.json
+.import_anime_progress.json
 __pycache__/
 *.pyc
